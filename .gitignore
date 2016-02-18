@@ -5,4 +5,4 @@
 *.o
 Vagrantfile
 installVB.sh
-.vagrant
+*.vagrant
