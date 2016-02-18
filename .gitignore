@@ -1,5 +1,8 @@
-*.elf
 *.hex
 *.map
+.DS_Store
+*.elf
+*.o
 Vagrantfile
 installVB.sh
+.vagrant

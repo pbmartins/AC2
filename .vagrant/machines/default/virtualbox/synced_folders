@@ -1,1 +1,1 @@
-{"virtualbox":{"/home/vagrant":{"guestpath":"/home/vagrant","hostpath":"/Users/pedromartins/Documents/UA/Ano_2/AC2","disabled":false,"__vagrantfile":true}}}
+{"virtualbox":{"/home/vagrant/Classes":{"guestpath":"/home/vagrant/Classes","hostpath":"/Users/pedromartins/Documents/UA/Ano_2/AC2/Classes","disabled":false,"__vagrantfile":true},"/vagrant":{"guestpath":"/vagrant","hostpath":"/Users/pedromartins/Documents/UA/Ano_2/AC2","disabled":false,"__vagrantfile":true}}}
