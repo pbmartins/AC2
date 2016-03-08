@@ -1,0 +1,13 @@
+#ifndef __CONVERT2VOLT__
+#define __CONVERT2VOLT__
+
+int convert2volt(int *p, int n) {
+    int sum = 0;
+    unsigned int i;
+    for (i = 0; i < n; i++)
+        sum += p[i * 4];
+
+    return ((sum / n) * 33 + 511) / 1023;
+}
+
+#endif /* __CONVERT2VOLT__ */
