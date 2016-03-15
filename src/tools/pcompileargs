@@ -1,0 +1,5 @@
+#!/bin/bash
+
+pcompileargs() {
+        pcompile $1 ~/src/lib/convert2volt.c ~/src/lib/send2displays.c ~/src/lib/initadc.c ~/src/lib/delay.c
+}

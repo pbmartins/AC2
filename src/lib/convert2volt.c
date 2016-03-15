@@ -1,5 +1,4 @@
-#ifndef __CONVERT2VOLT__
-#define __CONVERT2VOLT__
+#include "convert2volt.h"
 
 int convert2volt(int *p, int n) {
     int sum = 0;
@@ -10,4 +9,3 @@ int convert2volt(int *p, int n) {
     return ((sum / n) * 33 + 511) / 1023;
 }
 
-#endif /* __CONVERT2VOLT__ */

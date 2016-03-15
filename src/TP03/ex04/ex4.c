@@ -1,5 +1,5 @@
 #include <detpic32.h>
-#include "delay.c"
+#include "../../lib/delay.h"
 
 int main(void) {
     static const unsigned char codes[] = {

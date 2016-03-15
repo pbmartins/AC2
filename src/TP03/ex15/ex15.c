@@ -1,4 +1,4 @@
-#include "../../lib/send2displays.c"
+#include "../../lib/displays.h"
 
 int main(void) {
     unsigned int i = 0, rnd = 0, value;
