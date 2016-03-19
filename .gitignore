@@ -145,7 +145,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# Vagrant files
+### Vagrant files ###
 Vagrantfile
 installVB.sh
 *.vagrant
