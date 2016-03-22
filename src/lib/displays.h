@@ -22,7 +22,7 @@ static const unsigned char display7Scodes[] = {
         0b00111110,                                // e
         0b00011110,                                // f
         0b00000000                                 // null
-    };
+};
 
 /***************************************************/
 /* Convert char to binary coded value              */
