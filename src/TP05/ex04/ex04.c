@@ -9,7 +9,7 @@ static unsigned int nConvertions = 8;
 
 int main(void) {
     unsigned int c = 0;
-    initADC(8);                                             // Configure ADC with nConvertions = 8
+    initADC(nConvertions);                                  // Configure ADC with nConvertions = 8
     IFS1bits.AD1IF = 0;                                     // Rest AD1IF
     IPC6bits.AD1IP = 6;                                     // Configure interrupt priority
     IEC1bits.AD1IE = 1;                                     // Enable AD1 Interrupt
