@@ -1,120 +1,133 @@
-    .equ SFR_BASE, 0xBF88
+    .equ SFR_HI_BASE, 0xBF88
     .equ TRISE, 0x6100
     .equ PORTE, 0x6110
-    .equ LATE, 0x6120
-    .equ TIME, 5000000
-    .equ JOHNSON_SIZE, 8
+    .equ LATE,  0x6120
+    .equ TIMER, 5000000
+    .equ JOHNSON_SIZE, 7                # length(johnson) - 1
     .data
-johnson: .word 0x00, 0x01, 0x03, 0x07, 0x0F, 0x0E, 0x0C, 0x08
-counter: .word 0
+johnson:    .word 0x00, 0x01, 0x03, 0x06, 0x0F, 0x0E, 0x0C, 0x0A
+counter:    .word 0
     .text
     .globl main
 main:
-    # Save variables on stack
     addiu $sp, $sp, -12
     sw $ra, 0($sp)
-    sw $s0, 4($sp)
-    sw $s1, 8($sp)                              # previous value of RE4
+    sw $s0, 4($sp)                      # SFR base register
+    sw $s1, 8($sp)                      # RE6 previous value
 
-    # Configure R0-3 as outputs and R4-5 as inputs
-    lui $s0, SFR_BASE
+    # $t1 = RE6 current value
+    # $t2 = RE7 current value
+
+    la $s0, SFR_HI_BASE
+    
+    # Configure R0-3 as outputs and R6-7 as inputs
     lw $t0, TRISE($s0)
     andi $t0, $t0, 0xF0
-    ori $t0, $t0, 0x030
-    sw $t0, TRISE($s0)
+    ori $t0, $t0, 0x0C0
+    sw $t0, 0($s0)
 
-# Start infinite loop while it's reading values from R4-5
+    # Start infinite loop
 loop:
-    # Get values of R4 and R5
-    lw $t0, PORTE($s0)
-    srl $t0, $t0, 4
-    andi $t0, $t0, 0x03
-    srl $t1, $t0, 1                             # Current value of RE5
-    andi $t0, $t0, 0x01                         # Current value of RE4
-
-    # There's only need to update values when the counter is above 5M of value
-    li $v0, 11
+    # Read coreTimer
+    ori $v0, $0, 11
     syscall
-    ble $v0, TIME, loop                         # if (readCoreTimer() > 5000000) -> update timer
 
-    or $a0, $0, $0                              # reset = 0
-    beq $t0, $s1, endif1                        # if (previousRE4 != currentRE4)
-    ori $a0, $0, 1                              # reset == 1
+    blt $v0, TIMER, loop                # if (readCoreTimer() <= TIMER) continue;
 
-endif1:
-    or $s1, $t0, $0                             # Save currentRE4 value on previousRE4 variable
-    ori $a1, $0, 1                              # increment = 1
-    beq $t1, $0, endif2                         # if (RE5 == 1)
-    addi $a1, $0, -1                            # increment = -1
+    # Reset coreTimer
+    ori $v0, $0, 12
+    syscall
 
-endif2:
-    beq $t0, 1, else                            # if (currentRE4 == 0)
-    jal binarycounter                           # binaryCounter(reset, increment);
-    j endif3
+    # Read RE6-7 bits
+    lw $t0, PORTE($s0)
+    andi $t0, $t0, 0x0C0
+    srl $t0, $t0, 6
+    andi $t1, $t0, 0x01                 # RE6 = ((PORTE & 0x0C0) >> 6) && 0x01;
+    srl $t2, $t0, 1                     # RE7 = ((PORTE & 0x0C0) >> 6) >> 1;
 
-else:
-    jal johnsoncounter                          # johnsonCounter(reset, increment);
+    or $a0, $0, $0                      # reset = 0;
+    
+    beq $s1, $t1, endifreset            # if (previousRE6 != RE6)
+    ori $a0, $0, 1                      # reset = 1;
 
-endif3:
-    # Update RE0-RE4 values
+endifreset:
+    addi $a1, $0, -1                    # increment = -1;
+
+    bne $t2, $0, endifincrement         # if (RE7 == 0)
+    ori $a1, $0, 1                      # increment = 1;
+
+endifincrement:
+    bne $t1, $0, elsecounter            # if (RE6 == 0)
+    jal binarycounter                   # binaryCounter(reset, increment);
+    b endifcounter
+
+elsecounter:
+    jal johnsoncounter                  # johnsonCounter(reset, increment);
+
+endifcounter:
+    # Save current RE6 value in previous RE6 variable
+    or $s1, $t1, $0                     # previousR6 = RE6;
+
+    # Send $v0 to LEDs (RE0-3) 
     lw $t0, LATE($s0)
     andi $t0, $t0, 0xF0
     or $t0, $t0, $v0
-    sw $t0, LATE($s0)
+    sw $t0, LATE($s0)    
 
-    # Reset core timer
-    li $v0, 12
-    syscall
-    j loop
+    b loop
 
-endloop:
+endloop: 
     lw $ra, 0($sp)
     lw $s0, 4($sp)
     lw $s1, 8($sp)
     addiu $sp, $sp, 12
     jr $ra
 
-######################################################
-#### int binarycounter (int reset, int increment) ####
-######################################################
+
+#####################################################
+### int binarycounter (int reset, int increment) ####
+#####################################################
 binarycounter:
-    la $t0, counter                             # $t0 = &counter
-    beq $a0, 0, endifbinary                     # if (reset == 1)
-    ori $v0, $0, 0                              # return counter = 0;
-    sw $v0, 0($t0)
-    jr $ra
+    la $t0, counter
+    bne $a0, $0, endifresetbin          # if (reset == 0)
+    or $v0, $0, $0                      # $v0 = 0;
+    b returnbin
+    
+endifresetbin:
+    lw $v0, 0($t0)                      # $v0 = *counter;
+    addu $v0, $v0, $a1                  # $v0 += increment;
+    andi $v0, $v0, 0x0F                 # $v0 &= 0x0F;    
 
-endifbinary:
-    lw $v0, 0($t0)
-    add $v0, $v0, $a1                           # $v0 = *counter + increment;
-    andi $v0, $v0, 0x0F
-    sw $v0, 0($t0)                              # *counter = $t1;
-    jr $ra                                      # return *counter;
+returnbin:
+    sw $v0, 0($t0)                      # *counter = $v0;
+    jr $ra                              # return *counter;
 
 
-######################################################
-#### int johnsoncounter (int reset, int increment) ###
-######################################################
+#####################################################
+### int johnsoncounter (int reset, int increment) ###
+#####################################################
+
 johnsoncounter:
-    la $t0, counter                             # $t0 = &counter
-    beq $a0, 0, endifjohnson                    # if (reset == 1)
+    la $t0, counter
+    bne $a0, $0, endifresetjohnson      # if (reset == 0)
 
 resetjohnson:
-    or $t2, $0, $0                              # *counter = 0;
-    j endjohnson
+    or $v0, $0, $0                      # $v0 = 0;
+    b returnjohnson
 
-endifjohnson:
-    lw $t2, 0($t0)
-    add $t2, $t2, $a1                           # $t2 = *counter + increment
-    bge $t2, JOHNSON_SIZE, resetjohnson         # if (i > JOHNSON_SIZE) return johnson[0];
-    bge $t2, $0, endjohnson                     # if (i < 0) return johnson[JOHNSON_SIZE - 1];
-    li $t2, 7
+endifresetjohnson:
+    lw $v0, 0($t0)                      # $v0 = *counter;
+    addu $v0, $v0, $a1                  # $v0 += increment;
+    bgt $v0, JOHNSON_SIZE, resetjohnson # if ($v0 > JOHNSON_SIZE - 1)
+    bge $v0, $0, returnjohnson          # if ($v0 < 0)
+    ori $v0, $0, JOHNSON_SIZE           # $v0 = JOHNSON_SIZE - 1;
 
-endjohnson:
-    sw $t2, 0($t0)                              # Save new counter value
-    la $t0, johnson                             # $t0 = &johnson
-    sll $t2, $t2, 2                             # *counter *= 4;
-    add $t0, $t0, $t2                           # $t0 = &johnson[0] + *counter;
-    lw $v0, 0($t0)                              # return *(&johnson[0] + *counter);
+returnjohnson:
+    sw $v0, 0($t0)                      # *counter = $v0;
+
+    sll $v0, $v0, 2                     # $v0 *= 4;
+    la $t0, johnson
+    addu $t0, $t0, $v0
+    lw $v0, 0($t0)                      # $v0 = johnson[*counter];
     jr $ra
 
