@@ -5,7 +5,7 @@
     .equ TIMER, 5000000
     .equ JOHNSON_SIZE, 7                # length(johnson) - 1
     .data
-johnson:    .word 0x00, 0x01, 0x03, 0x06, 0x0F, 0x0E, 0x0C, 0x0A
+johnson:    .word 0x00, 0x01, 0x03, 0x07, 0x0F, 0x0E, 0x0C, 0x08
 counter:    .word 0
     .text
     .globl main
@@ -18,7 +18,7 @@ main:
     # $t1 = RE6 current value
     # $t2 = RE7 current value
 
-    la $s0, SFR_HI_BASE
+    lui $s0, SFR_HI_BASE
     
     # Configure R0-3 as outputs and R6-7 as inputs
     lw $t0, TRISE($s0)
@@ -45,6 +45,16 @@ loop:
     andi $t1, $t0, 0x01                 # RE6 = ((PORTE & 0x0C0) >> 6) && 0x01;
     srl $t2, $t0, 1                     # RE7 = ((PORTE & 0x0C0) >> 6) >> 1;
 
+    li $v0, 7
+    or $a0, $t1, $0
+    syscall
+    li $v0, 7
+    or $a0, $t2, $0
+    syscall
+    li $v0, 3
+    li $a0, '\n'
+    syscall
+    
     or $a0, $0, $0                      # reset = 0;
     
     beq $s1, $t1, endifreset            # if (previousRE6 != RE6)
@@ -127,7 +137,7 @@ returnjohnson:
 
     sll $v0, $v0, 2                     # $v0 *= 4;
     la $t0, johnson
-    addu $t0, $t0, $v0
+    add $t0, $t0, $v0
     lw $v0, 0($t0)                      # $v0 = johnson[*counter];
     jr $ra
 
