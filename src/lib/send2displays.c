@@ -64,13 +64,13 @@ void send2displays(unsigned char value) {
 
     if (!displayFlag) {
         // select display low
-        LATBbits.LATB9 = 1;
-        LATBbits.LATB8 = 0;
+        LATBbits.LATB9 = 0;
+        LATBbits.LATB8 = 1;
         LATB = (LATB & 0xFF00) | display7Scodes[digit_low];
     } else {
         // select display high
-        LATBbits.LATB9 = 0;
-        LATBbits.LATB8 = 1;
+        LATBbits.LATB9 = 1;
+        LATBbits.LATB8 = 0;
         LATB = (LATB & 0xFF00) | display7Scodes[digit_high];
     }
     displayFlag = !displayFlag;
