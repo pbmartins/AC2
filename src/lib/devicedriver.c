@@ -1,7 +1,7 @@
 #include "devicedriver.h"
 
 /***************************************************/
-/* Initialize variables of the reception buffer ****/
+/* Initialize variables of the reception buffer    */
 /***************************************************/
 void comDrv_flushRx(void) {
     rxb.head = rxb.tail = rxb.count = 0 = rxb.oerr = 0;
@@ -32,9 +32,10 @@ void comDrv_config(unsigned int baud, char parity, unsigned int stopbits) {
         case 'O': U1MODEbits.PDSEL = 2; break;
     }
 
-    U1MODEbits.STSEL = 0;
-    if (stopbits == 2)
-        U1MODEbits.STSEL = 1;
+    switch(stopbits) {
+        case 1: default: U1MODEbits.STSEL = 0; break;
+        case 2: U1MODEbits.STSEL = 1; break;
+    }
 
     // Enable the trasmitter and receiver modules (see register U1STA)
     U1STAbits.UTXEN = U1STAbits.URXEN = 1;
@@ -67,7 +68,7 @@ void comDrv_putc(char ch) {
 }
 
 /***************************************************/
-/* Writes a string on the transmission buffer   */
+/* Writes a string on the transmission buffer      */
 /***************************************************/
 void comDrv_puts(char* ch) {
     while (*ch)

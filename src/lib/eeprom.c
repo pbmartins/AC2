@@ -44,7 +44,7 @@ void spi2_setClock(unsigned int clock_freq) {
 char eeprom_readStatus(void) {
     volatile char trash;
 
-    while (SPI2STATbits.SPIRBE == 0)            // Clear RX FIFO
+    while (!SPI2STATbits.SPIRBE)                // Clear RX FIFO
         trash = SPI2BUF;
     SPI2STATbits.SPIROV = 0;                    // Clear overflow error flag bit
 
@@ -97,7 +97,7 @@ void eeprom_writeData(int address, char value) {
 char eeprom_readData(int address) {
     volatile char trash;
 
-    while (SPI2STATbits.SPIRBE == 0)            // Clear RX FIFO
+    while (!SPI2STATbits.SPIRBE)                // Clear RX FIFO
         trash = SPI2BUF;
     SPI2STATbits.SPIROV = 0;                    // Clear overflow error flag bit
     address &= 0x01FF;                          /* Apply a mask to limit address
