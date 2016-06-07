@@ -5,7 +5,14 @@
 #include "../../../lib/initadc.h"
 #include "../../../lib/configuart.h"
 #include "../../../lib/eeprom.h"
-#define EEPROM_CLOCK 500000
+#include "../../../lib/i2c.h"
+
+#define EEPROM_CLOCK    500000
+#define ADDR_WR         ((SENS_ADDRESS << 1) | I2C_WRITE)
+#define ADDR_RD         ((SENS_ADDRESS << 1) | I2C_READ)
+#define SENS_ADDRESS    0x4D
+#define TC74_CLK_FREQ   100000          // 100 KHz
+#define RTR             0               // Read temperature command
 
 volatile unsigned char value2displays, voltMin = 33, voltMax = 0;
 static unsigned int nConvertions = 8, counter = 0,
@@ -47,6 +54,9 @@ void configureAll(void) {
     // Configure EEPROM
     spi2_init();
     spi2_setClock(EEPROM_CLOCK);
+
+    // Configure Temperature Sensor
+    i2c1_init(TC74_CLK_FREQ);
 }
 
 int readMode(void) {
@@ -79,7 +89,25 @@ void puts(char *str) {
         putc(c);
 }
 
+int getTemperature(int *temp) {
+    int ack;
+
+    i2c1_start();                       // Send Start event
+    ack = i2c1_send(ADDR_WR);           // Send Address + WR (ADDR_WR)
+    ack += i2c1_send(RTR);              // Send Command (RTR)
+    i2c1_start();                       // Send Start event (again)
+    ack += i2c1_send(ADDR_RD);          // Send Address + RD (ADDR_RD)
+    if (ack) {                          // Test "ack" variable
+        i2c1_stop();                    // send the Stop event
+        printStr("\nAn error has ocurred");
+        return -1;
+    }
+    *temp = i2c1_receive(I2C_NACK);      // Receive a value from slave copy
+    i2c1_stop();                        // Send Stop event
+}
+
 int main(void) {
+    int tmp;
     configureAll();
     EnableInterrupts();                                     // Global Interrupt Enable
 
@@ -101,6 +129,8 @@ int main(void) {
             break;
 
         case 3:
+            getTemperature(&tmp);
+            value2displays = tmp;
             break;
         }
     }
@@ -123,16 +153,24 @@ void _int_(27) isr_adc(void) {
 // Timer 1
 void _int_(4) isr_T1(void) {
     char cnt;
+    static int temp;
 
     AD1CON1bits.ASAM = 1;                                   // Start A/D conversion
     IFS0bits.T1IF = 0;                                      // Reset T1IF flag
 
     if (beginStoring) {
         cnt = eeprom_readData(0);
-        if (eeprom_cnt++ >= 45 && cnt < 64) {
+        if (eeprom_cnt++ >= 60 && cnt < 64) {
+            printStr("BEFORE");
+            if (readMode() == 3)
+                temp = value2displays;
+            else
+                getTemperature(&temp);
+            printStr("MIDDLE");
             eeprom_cnt = 0;
-            eeprom_writeData(cnt + 2, value2displays);
+            eeprom_writeData(cnt + 2, temp);
             eeprom_writeData(0, ++cnt);
+            printStr("HERE");
         }
     }
 }
@@ -154,8 +192,6 @@ void _int_(12) isr_T3(void) {
     }
     IFS0bits.T3IF = 0;                                      // Reset T3IF flag
 }
-
-
 
 // UART1
 void _int_(24) isr_uart1(void) {
@@ -184,6 +220,7 @@ void _int_(24) isr_uart1(void) {
         } else if (reg == 'R')
             eeprom_writeData(0, 0);
         else if (reg == 'S') {
+            beginStoring = 0;
             putc('\n');
             cnt = eeprom_readData(0);
             i = 0;
